@@ -1,28 +1,10 @@
-var orgId = null
-var sessionHash = null
-var serverInstance = {}
-var classicURL = {}
-var sessionId = {}
-var userId = {}
-var customObjects = {}
-var commands = {}
-
-var searchBox
-var listPosition = -1
-var mouseClickLoginAsUserId
-var loaded = false
-
-const debug = false
-const newTabKeys = [ "ctrl+enter", "command+enter", "shift+enter" ]
-const regMatchSid = /sid=([a-zA-Z0-9\.\!]+)/
-const SFAPI_VERSION = 'v40.0'
-
 var getHTTP = function(targetUrl, type = "json", headers = {}, data = {}, method = "GET") {
 	let request = { method: method, headers: headers }
+	if(targetUrl.substring(0,5) != "https")
+		targetUrl = "https://" + targetUrl
 	if(Object.keys(data).length > 0)
 		request.body = JSON.stringify(data)
 	return fetch(targetUrl, request).then(response => {
-		classicURL[orgId] = response.url.match(/:\/\/(.*)salesforce.com/)[1] + "salesforce.com"
 		switch(type) {
 			case "json": return response.clone().json()
 			case "document": return response.clone().text()
@@ -34,7 +16,12 @@ var getHTTP = function(targetUrl, type = "json", headers = {}, data = {}, method
 			return data
 	})
 }
+const debug = false
+var log = (msg)=> {if(debug) console.log(msg)}
 
+const regMatchOrgId = /sid=([\w\d]+)/
+const regMatchSid = /sid=([a-zA-Z0-9\.\!]+)/
+const SFAPI_VERSION = 'v40.0'
 const classicToLightingMap = {
 	'Fields': "/FieldsAndRelationships/view",
 	'Page Layouts': '/PageLayouts/view',

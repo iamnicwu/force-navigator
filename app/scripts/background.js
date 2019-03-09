@@ -1,6 +1,11 @@
-var commands = {}
-var lastUpdated = {}
+var commands = {},
+	orgIds = {},
+	serverInstances = {},
+	apiUrls = {},
+	sessionIds = {},
+	userIds = {}
 var showElement = (element)=>{
+log("show element")
 	chrome.tabs.query({currentWindow: true, active: true}, (tabs)=>{
 		switch(element) {
 			case "appMenu":
@@ -17,18 +22,150 @@ var showElement = (element)=>{
 	})
 }
 var goToUrl = (targetUrl, newTab)=>{
+log("go to url", targetUrl)
 	chrome.tabs.query({currentWindow: true, active: true}, (tabs)=>{
-		targetUrl = tabs[0].url.match(/.*\.com/)[0] + targetUrl.match(/.*\.com(.*)/)[1]
-		if(newTab)
-			chrome.tabs.create({active: false, url: targetUrl})
+		if(targetUrl.includes("force.com"))
+			targetUrl = tabs[0].url.match(/.*\.com/)[0] + targetUrl.match(/.*\.com(.*)/)[1]
 		else
-			chrome.tabs.update(tabs[0].id, {url: targetUrl})
+			targetUrl = tabs[0].url.match(/.*\.com/)[0] + targetUrl
+		if(newTab) chrome.tabs.create({active: false, url: targetUrl})
+		else chrome.tabs.update(tabs[0].id, {url: targetUrl})
 	})
 }
-// check these
+var sendTabMessage = (message)=> {
+log("send tab message")
+	chrome.tabs.query({url: "https://*.force.com/*"}, (tabs)=>{
+		for(let i = 0; i < tabs.length; i++)
+			chrome.tabs.sendMessage(tabs[i].id, message, (response)=>{})
+	})
+	chrome.tabs.query({url: "https://*.salesforce.com/*"}, (tabs)=>{
+		for(let i = 0; i < tabs.length; i++)
+			chrome.tabs.sendMessage(tabs[i].id, message, (response)=>{})
+	})
+}
+
+var getSessionApiSettings = (args)=>{
+	let sessionHash, url, sendResponse
+	({sessionHash, url, sendResponse} = args)
+	if(sessionIds[sessionHash] != null) {
+log("sess have")
+		getSessionCommands(args)
+		sendResponse({
+			action: 'updateSessionApiSettings', key: sessionHash,
+			data: {sessionId: sessionIds[sessionHash], userId: userIds[sessionHash], apiUrl: apiUrls[sessionHash]}
+		})
+	}
+	else {
+log("sess get")
+		let orgId = sessionHash.split("!")[0]
+		serverInstances[sessionHash] = url
+		chrome.cookies.getAll({}, (all)=>{
+			all.forEach((c)=>{
+				if(c.domain.includes("salesforce.com") && c.value.includes(orgId)) {
+					if(c.name == 'sid') {
+						sessionIds[sessionHash] = c.value
+						apiUrls[sessionHash] = c.domain
+					}
+					else if(c.name == 'disco') userIds[sessionHash] = c.value.match(/005[\w\d]+/)[0]
+				}
+			})
+			if([sessionIds[sessionHash], apiUrls[sessionHash], userIds[sessionHash]].includes(null))
+				sendTabMessage({action: 'showError', data: {error: "No session data found for " + request.key} })
+			else {
+				getSessionCommands(args)
+				sendResponse({
+					action: 'updateSessionApiSettings', key: sessionHash,
+					data: {sessionId: sessionIds[sessionHash], userId: userIds[sessionHash], apiUrl: apiUrls[sessionHash]}
+				})
+			}
+		})
+	}
+}
+
+var getSessionCommands = (args)=>{
+log("get commands")
+	let sessionHash, url
+	({sessionHash, url} = args)
+	if(commands[sessionHash] != null) {
+		sendTabMessage({action: 'updateSessionCommands', key: sessionHash, commands: commands[sessionHash] })
+	}
+	else {
+		commands[sessionHash] = { "Refresh Metadata": {}, "Toggle Lightning": {}, "Setup": {}, "?": {}, "Home": {} }
+		getHTTP(apiUrls[sessionHash] + "/ui/setup/Setup", "document").then(response => parseSetupTree(sessionHash, response))
+		getHTTP(apiUrls[sessionHash] + "/p/setup/custent/CustomObjectsPage", "document").then(response => parseCustomObjects(sessionHash, response))
+		getHTTP(apiUrls[sessionHash] + '/services/data/' + SFAPI_VERSION + '/sobjects/', "json",
+			{"Authorization": "Bearer " + sessionIds[sessionHash], "Accept": "application/json"})
+			.then(response => parseMetadata(sessionHash, response))
+	}
+	return args
+}
+function parseSetupTree(sessionHash, response) {
+log("parse setup")
+	let strNameMain, strName = {}
+	;[].map.call(response.querySelectorAll('.setupLeaf > a[id*="_font"]'), function(item) {
+		let hasTopParent = false, hasParent = false
+		let parent, topParent, parentEl, topParentEl
+		if (![item.parentElement, item.parentElement.parentElement, item.parentElement.parentElement.parentElement].includes(null) && item.parentElement.parentElement.parentElement.className.indexOf('parent') !== -1) {
+			hasParent = true
+			parentEl = item.parentElement.parentElement.parentElement
+			parent = parentEl.querySelector('.setupFolder').innerText
+		}
+		if(hasParent && ![parentEl.parentElement, parentEl.parentElement.parentElement].includes(null) && parentEl.parentElement.parentElement.className.indexOf('parent') !== -1) {
+			hasTopParent = true
+			topParentEl = parentEl.parentElement.parentElement
+			topParent = topParentEl.querySelector('.setupFolder').innerText
+		}
+		strNameMain = 'Setup > ' + (hasTopParent ? (topParent + ' > ') : '')
+		strNameMain += (hasParent ? (parent + ' > ') : '')
+		strName = strNameMain + item.innerText
+		let targetUrl = item.href
+		if(serverInstances[sessionHash].includes("lightning.force") && Object.keys(setupLabelsToLightningMap).includes(item.innerText))
+			targetUrl = setupLabelsToLightningMap[item.innerText]
+		if(serverInstances[sessionHash].includes("lightning.force") && strNameMain.includes("Customize") && Object.keys(classicToLightingMap).includes(item.innerText)) {
+			if(commands[sessionHash]['List ' + parent ] == null) { commands[sessionHash]['List ' + parent ] = {url: "/lightning/o/" + pluralize(parent, 1).replace(/\s/g,"") + "/list", key: "List " + parent} }
+			if(commands[sessionHash]['New ' + pluralize(parent, 1) ] == null) { commands[sessionHash]['New ' + pluralize(parent, 1) ] = {url: "/lightning/o/" + pluralize(parent, 1).replace(/\s/g,"") + "/new", key: "New " + pluralize(parent, 1)} }
+			targetUrl = "/lightning/setup/ObjectManager/" + pluralize(parent, 1).replace(/\s/g, "")
+			targetUrl += classicToLightingMap[item.innerText]
+		}
+		if(commands[sessionHash][strName] == null) commands[sessionHash][strName] = {url: targetUrl, key: strName}
+	})
+	sendTabMessage({action: 'updateSessionCommands', key: sessionHash, commands: commands[sessionHash] })
+}
+function parseMetadata(sessionHash, response) {
+log("parse meta")
+	if(response.length == 0 || typeof response.sobjects == "undefined") return false
+	let labelPlural, label, name, keyPrefix
+	response.sobjects.map(obj => {
+		if(obj.keyPrefix != null) {
+			({labelPlural, label, name, keyPrefix} = obj)
+			commands[sessionHash]["List " + labelPlural] = { key: name, keyPrefix: keyPrefix, url: "/" + keyPrefix }
+			commands[sessionHash]["New " + label] = { key: name, keyPrefix: keyPrefix, url: "/" + keyPrefix + "/e" }
+		}
+	})
+	sendTabMessage({action: 'updateSessionCommands', key: sessionHash, commands: commands[sessionHash] })
+}
+function parseCustomObjects(sessionHash, response) {
+log("parse custom")
+	let mapKeys = Object.keys(classicToLightingMap)
+	;[].map.call(response.querySelectorAll('th a'), function(el) {
+		if(serverInstances[sessionHash].includes("lightning.force")) {
+			let objectId = el.href.match(/\/(\w+)\?/)[1]
+			let targetUrl = "/lightning/setup/ObjectManager/" + objectId
+			commands[sessionHash]['Setup > Custom Object > ' + el.text + ' > Details'] = {url: targetUrl + "/Details/view", key: el.text + " > Fields"}
+			for (var i = 0; i < mapKeys.length; i++) {
+				let key = mapKeys[i]
+				let urlElement = classicToLightingMap[ key ]
+				commands[sessionHash]['Setup > Custom Object > ' + el.text + ' > ' + key] = {url: targetUrl + urlElement, key: el.text + " > " + key}
+			}
+		} else {
+			commands[sessionHash]['Setup > Custom Object > ' + el.text] = {url: el.href.replace(/.*:\/\/\w*/, ""), key: el.text}
+		}
+	})
+	sendTabMessage({action: 'updateSessionCommands', key: sessionHash, commands: commands[sessionHash] })
+}
+
 chrome.browserAction.setPopup({ popup: "popup.html" })
-chrome.browserAction.onClicked.addListener(()=>{ chrome.browserAction.setPopup({ popup: "popup.html" }) })
-//-----
+chrome.browserAction.onClicked.addListener(()=>{  log("click listener"); chrome.browserAction.setPopup({ popup: "popup.html" }) })
 chrome.commands.onCommand.addListener((command)=>{
 	switch(command) {
 		case 'showSearchBox': showElement("searchBox"); break
@@ -38,50 +175,18 @@ chrome.commands.onCommand.addListener((command)=>{
 	}
 })
 chrome.runtime.onMessage.addListener((request, sender, sendResponse)=>{
-	var orgKey = request.key != null ? request.key.split('!')[0] : request.key
-	if (request.action == "getApiSessionId") {
-		if (request.key != null) {
-			request.sid = request.uid = request.domain = ""
-			chrome.cookies.getAll({}, (all)=>{
-				all.forEach((c)=>{
-					if(c.domain.includes("salesforce.com") && c.value.includes(request.key)) {
-						if(c.name == 'sid') {
-							request.sid = c.value
-							request.domain = c.domain
-						}
-						else if(c.name == 'disco') request.uid = c.value.match(/005[\w\d]+/)[0]
-					}
-				})
-				if(request.sid != "" || request.uid != "")
-					sendResponse({sessionId: request.sid, userId: request.uid, classicURL: request.domain})
-				else sendResponse({error: "No session data found for " + request.key})
-				return request
-			})
-		} else sendResponse({error: "Must include orgId"})
-	}
 	switch(request.action) {
 		case 'goToUrl': goToUrl(request.url, request.newTab); break
-		case 'getOrgCommands': sendResponse(commands[request.key]); break
-		case 'storeOrgCommands':
-/* convert to stored settings
-chrome.storage.local.set({key: value}, function() {
-          console.log('Value is set to ' + value);
-})
-*/
-			Object.keys(lastUpdated).forEach((key)=>{
-				if(key != request.key && key.split('!')[0] == orgKey) {
-					if(commands[key] != null) delete commands[key]
-					if(lastUpdated[key] != null) delete lastUpdated[key]
-				}
-			})
-			commands[request.key] = request.payload
-			lastUpdated[request.key] = new Date()
-			sendResponse({lastUpdated: lastUpdated[request.key]})
-			break
-		case 'clearCommands':
+		case 'getSessionData':
+			getSessionApiSettings({sessionHash: request.key, url: request.url, sendResponse: sendResponse}); break
+		case 'refreshSessionData':
 			if(commands[request.key]) delete commands[request.key]
-			if(lastUpdated[request.key]) delete lastUpdated[request.key]
-			sendResponse({})
+			if(orgIds[request.key]) delete orgIds[request.key]
+			if(serverInstances[request.key]) delete serverInstances[request.key]
+			if(apiUrls[request.key]) delete apiUrls[request.key]
+			if(sessionIds[request.key]) delete sessionIds[request.key]
+			if(userIds[request.key]) delete userIds[request.key]
+			getSessionApiSettings({sessionHash: request.key, url: request.url, sendResponse: sendResponse})
 			break
 	}
 	return true
