@@ -16,6 +16,25 @@ const debug = false
 const newTabKeys = [ "ctrl+enter", "command+enter", "shift+enter" ]
 const regMatchSid = /sid=([a-zA-Z0-9\.\!]+)/
 const SFAPI_VERSION = 'v40.0'
+
+var getHTTP = function(targetUrl, type = "json", headers = {}, data = {}, method = "GET") {
+	let request = { method: method, headers: headers }
+	if(Object.keys(data).length > 0)
+		request.body = JSON.stringify(data)
+	return fetch(targetUrl, request).then(response => {
+		classicURL[orgId] = response.url.match(/:\/\/(.*)salesforce.com/)[1] + "salesforce.com"
+		switch(type) {
+			case "json": return response.clone().json()
+			case "document": return response.clone().text()
+		}
+	}).then(data => {
+		if(typeof data == "string")
+			return (new DOMParser()).parseFromString(data, "text/html")
+		else
+			return data
+	})
+}
+
 const classicToLightingMap = {
 	'Fields': "/FieldsAndRelationships/view",
 	'Page Layouts': '/PageLayouts/view',

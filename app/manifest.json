@@ -5,8 +5,11 @@
 	"default_locale": "en",
 	"browser_action": { "default_icon": "images/sf-navigator32.png" },
 	"background": {
-		"scripts": [ "scripts/background.js" ],
-		"persistent": true
+		"scripts": [
+			"scripts/includes.js",
+			"scripts/background.js"
+		],
+		"persistent": false
 	},
 	"icons": {
 		"16": "images/sf-navigator16.png",
@@ -30,7 +33,7 @@
 		"js": [
 			"scripts/mousetrap.min.js",
 			"scripts/pluralize.js",
-			"scripts/variables.js",
+			"scripts/includes.js",
 			"scripts/main.js",
 			"scripts/popup.js"
 		],

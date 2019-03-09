@@ -25,9 +25,10 @@ var goToUrl = (targetUrl, newTab)=>{
 			chrome.tabs.update(tabs[0].id, {url: targetUrl})
 	})
 }
-
+// check these
 chrome.browserAction.setPopup({ popup: "popup.html" })
 chrome.browserAction.onClicked.addListener(()=>{ chrome.browserAction.setPopup({ popup: "popup.html" }) })
+//-----
 chrome.commands.onCommand.addListener((command)=>{
 	switch(command) {
 		case 'showSearchBox': showElement("searchBox"); break

@@ -1,8 +1,9 @@
 // @copyright 2012+ Daniel Nakov / Silverline CRM
 // http://silverlinecrm.com
 // @copyright 2019+ Danny Summerlin
-
+console.log(getHTTP)
 var sfnav = (()=>{
+// these can vary tab by tab so should be in main
 	var getServerInstance = ()=>{
 		if(serverInstance[sessionHash] == null) {
 			let targetUrl
@@ -28,25 +29,9 @@ var sfnav = (()=>{
 			return sessionHash
 		} catch(e) { if(debug) console.log(e) }
 	}
-	let getHTTP = function(targetUrl, type = "json", headers = {}, data = {}, method = "GET") {
-		let request = { method: method, headers: headers }
-		if(Object.keys(data).length > 0)
-			request.body = JSON.stringify(data)
-		return fetch(targetUrl, request).then(response => {
-			classicURL[orgId] = response.url.match(/:\/\/(.*)salesforce.com/)[1] + "salesforce.com"
-			switch(type) {
-				case "json": return response.clone().json()
-				case "document": return response.clone().text()
-			}
-		}).then(data => {
-			if(typeof data == "string")
-				return (new DOMParser()).parseFromString(data, "text/html")
-			else
-				return data
-		})
-	}
 	var getUserId = ()=> userId[orgId]
 
+// this part should probably go in background
 	function getAllObjectMetadata(force) {
 		if(serverInstance[getSessionHash()] == null || orgId == null || sessionId[orgId] == null) { init(); return false }
 		commands[sessionHash]['Refresh Metadata'] = {}
@@ -186,7 +171,7 @@ var sfnav = (()=>{
 	var createTask = function(subject) {
 		showLoadingIndicator()
 		if(subject != "" && getUserId()) {
-			getHTTP("https://" + classicURL + "/services/data/" + SFAPI_VERSION + "/sobjects/Task", "json", {"Authorization": "Bearer " + sessionId[orgId], "Content-Type": "application/json" }, {"Subject": subject, "OwnerId": getUserId()}, "POST")
+			getHTTP("https://" + classicURL[orgId] + "/services/data/" + SFAPI_VERSION + "/sobjects/Task", "json", {"Authorization": "Bearer " + sessionId[orgId], "Content-Type": "application/json" }, {"Subject": subject, "OwnerId": getUserId()}, "POST")
 			.then(function (reply) {
 				if(reply.errors.length == 0) {
 					clearOutput()
@@ -207,7 +192,7 @@ var sfnav = (()=>{
 		if(cmdSplit[3] !== undefined)
 			searchValue += '+' + cmdSplit[3]
 		showLoadingIndicator()
-		getHTTP("https://" + classicURL + "/services/data/" + SFAPI_VERSION + "/tooling/query/?q=SELECT+Id,+Name,+Username+FROM+User+WHERE+Name+LIKE+'%25" + searchValue + "%25'+OR+Username+LIKE+'%25" + searchValue + "%25'", "json", {"Authorization": "Bearer " + sessionId[orgId], "Content-Type": "application/json" })
+		getHTTP("https://" + classicURL[orgId] + "/services/data/" + SFAPI_VERSION + "/tooling/query/?q=SELECT+Id,+Name,+Username+FROM+User+WHERE+Name+LIKE+'%25" + searchValue + "%25'+OR+Username+LIKE+'%25" + searchValue + "%25'", "json", {"Authorization": "Bearer " + sessionId[orgId], "Content-Type": "application/json" })
 		.then(function(success) {
 			hideLoadingIndicator()
 			let numberOfUserRecords = success.records.length
@@ -220,7 +205,7 @@ var sfnav = (()=>{
 		}).catch(function(error) {
 			hideLoadingIndicator()
 			console.log(error)
-			addError(error.responseJSON)
+			addError(error)
 		})
 	}
 	function loginAsShowOptions(records) {
@@ -231,7 +216,7 @@ var sfnav = (()=>{
 		}
 	}
 	function loginAsPerform(userId, newTab) {
-		let targetUrl = "https://"+classicURL+"/servlet/servlet.su?oid="+orgId+"&suorgadminid="+userId+"&targetUrl=/home/home.jsp"
+		let targetUrl = "https://"+classicURL[orgId]+"/servlet/servlet.su?oid="+orgId+"&suorgadminid="+userId+"&targetUrl=/home/home.jsp"
 		hideSearchBox()
 		if(newTab) goToUrl(targetUrl, true)
 		else goToUrl(targetUrl)
@@ -372,10 +357,11 @@ var sfnav = (()=>{
 		err.className = "sfnav_child sfnav-error-wrapper"
 		err.appendChild(document.createTextNode('Error! '))
 		err.appendChild(document.createElement('br'))
-		for(var i = 0;i<text.length;i++) {
-			err.appendChild(document.createTextNode(text[i].message))
-			err.appendChild(document.createElement('br'))
-		}
+		if(text != null)
+			for(var i = 0;i<text.length;i++) {
+				err.appendChild(document.createTextNode(text[i].message))
+				err.appendChild(document.createElement('br'))
+			}
 		searchBox.appendChild(err)
 	}
 	function clearOutput() { if(typeof searchBox != 'undefined') searchBox.innerHTML = "" }
