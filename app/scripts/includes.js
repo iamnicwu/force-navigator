@@ -1,3 +1,5 @@
+const debug = true
+var log = (msg)=> {if(debug) console.log(msg)}
 var getHTTP = function(targetUrl, type = "json", headers = {}, data = {}, method = "GET") {
 	let request = { method: method, headers: headers }
 	if(targetUrl.substring(0,5) != "https")
@@ -16,8 +18,26 @@ var getHTTP = function(targetUrl, type = "json", headers = {}, data = {}, method
 			return data
 	})
 }
-const debug = true
-var log = (msg)=> {if(debug) console.log(msg)}
+var promiseHttp = (args)=>{
+	args = Object.assign({ targetUrl: "", type: "json", headers: {}, data: {}, method: "GET"}, args)
+	let request = { method: args.method, headers: args.headers }
+	if(args.targetUrl.substring(0,5) != "https")
+		args.targetUrl = "https://" + args.targetUrl
+	if(Object.keys(args.data).length > 0)
+		request.body = JSON.stringify(args.data)
+
+	return fetch(args.targetUrl, request).then((response)=>{
+		switch(args.type) {
+			case "json": return response.clone().json()
+			case "document": return response.clone().text()
+		}
+	}).then((data)=>{
+		if(typeof data == "string")
+			return (new DOMParser()).parseFromString(data, "text/html")
+		else
+			return data
+	})
+}
 
 const regMatchOrgId = /sid=([\w\d]+)/
 const regMatchSid = /sid=([a-zA-Z0-9\.\!]+)/

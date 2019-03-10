@@ -37,8 +37,8 @@
 		"js": [
 			"scripts/mousetrap.min.js",
 			"scripts/includes.js",
-			"scripts/main.js",
-			"scripts/popup.js"
+			"scripts/popup.js",
+			"scripts/main.js"
 		],
 		"run_at": "document_end"
 	}],

@@ -39,6 +39,9 @@ var sfnav = (()=>{
 			return sessionHash
 		}
 	}
+	var setupSession = args => { 
+		console.log(args)
+		({sessionId, userId, apiUrl} = args) }
 	var getUserId = ()=> userId
 
 	function invokeCommand(cmd, newTab, event) {
@@ -54,28 +57,13 @@ var sfnav = (()=>{
 				})
 				return true
 				break
-			case "toggle lightning":
-				let mode
-				if(window.location.href.includes("lightning.force")) mode = "classic"
-				else mode = "lex-campaign"
-				targetUrl = "/ltng/switcher?destination=" + mode
-				break
-			case "setup":
-				if(getServerInstance().includes("lightning.force"))
-					targetUrl = "/lightning/setup/SetupOneHome/home"
-				else
-					targetUrl = "/ui/setup/Setup"
-				break
-			case "home":
-				targetUrl = "/"
-				break
 		}
 		if(checkCmd.substring(0,9) == 'login as ') { loginAs(cmd, newTab); return true }
 		else if(checkCmd.substring(0,1) == "!") { createTask(cmd.substring(1).trim()) }
 		else if(checkCmd.substring(0,1) == "?") { targetUrl = searchTerms(cmd.substring(1).trim()) }
 		else if(event != 'click' && typeof commands[cmd] != 'undefined' && commands[cmd].url) { targetUrl = commands[cmd].url }
 		else if(debug && !checkCmd.includes("create a task: !") && !checkCmd.includes("global search usage")) {
-			console.log(cmd + " not found in command list or incompatible")
+			log(cmd + " not found in command list or incompatible")
 			return false
 		}
 		if(targetUrl != "") {
@@ -89,7 +77,7 @@ var sfnav = (()=>{
 	}
 	var goToUrl = function(url, newTab) { chrome.runtime.sendMessage({ action: 'goToUrl', url: getServerInstance() + url, newTab: newTab } , (response)=>{}) }
 	var searchTerms =function (terms) {
-		var targetUrl = "" //getServerInstance()
+		var targetUrl = ""
 		if(getServerInstance().includes('.force.com'))
 			targetUrl += "/one/one.app#" + btoa(JSON.stringify({"componentDef":"forceSearch:search","attributes":{"term": terms,"scopeMap":{"type":"TOP_RESULTS"},"context":{"disableSpellCorrection":false,"SEARCH_ACTIVITY":{"term": terms}}}}))
 		else
@@ -105,10 +93,10 @@ var sfnav = (()=>{
 					clearOutput()
 					commands["Go To Created Task"] = {url: "/"+ reply.id }
 					document.getElementById("sfnav_quickSearch").value = ""
-					addElements('Go To Created Task')
+					addWord('Go To Created Task')
 					addWord('(press escape to exit or enter a new command)')
 				} else {
-					console.log(response)
+					log(response)
 				}
 				hideLoadingIndicator()					
 			})
@@ -132,7 +120,7 @@ var sfnav = (()=>{
 			}
 		}).catch(function(error) {
 			hideLoadingIndicator()
-			console.log(error)
+			log(error)
 			addError(error)
 		})
 	}
@@ -140,7 +128,7 @@ var sfnav = (()=>{
 		for(let i = 0; i < records.length; ++i) {
 			let cmd = 'Login As ' + records[i].Name
 			commands[cmd] = {key: cmd, id: records[i].Id}
-			addElements(cmd)
+			addWord(cmd)
 		}
 	}
 	function loginAsPerform(userId, newTab) {
@@ -337,10 +325,9 @@ var sfnav = (()=>{
 	}
 
 	chrome.runtime.onMessage.addListener((request, sender, sendResponse)=>{
-log("request", request)
 		let response = {}
 		switch(request.action) {
-			case "showError": if(getSessionHash() == request.key) log("error", response.data); break
+			case "showError": if(getSessionHash() == request.key) log("error", request.data); break
 			case "updateSessionApiSettings": if(getSessionHash() == request.key) setupSession(response.data); break
 			case "updateSessionCommands":
 				if(getSessionHash() == request.key) {
@@ -352,8 +339,6 @@ log("request", request)
 		sendResponse(response)
 		return true
 	})
-	var setupSession = (args)=>{ ({sessionId, userId, apiUrl} = args) }
-
 	function init() {
 		if(document.body != null && document.cookie.match(regMatchOrgId) != null) {
 			orgId = document.cookie.match(regMatchOrgId)[1]
@@ -375,9 +360,7 @@ log("request", request)
 			hideLoadingIndicator()
 			bindShortcuts()
 			if(sessionId == null)
-				chrome.runtime.sendMessage({ action: 'getSessionData', key: getSessionHash(), url: getServerInstance() }, (response)=>{
-					setupSession(response.data)
-				})
+				chrome.runtime.sendMessage({ action: 'getSessionData', key: getSessionHash(), url: getServerInstance() }, response => setupSession(response.data))
 		}
 	}
 	init()
