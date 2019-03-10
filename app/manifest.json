@@ -3,7 +3,10 @@
 	"version": "2.6.3",
 	"manifest_version": 2,
 	"default_locale": "en",
-	"page_action": { "default_icon": "images/sf-navigator32.png" },
+	"page_action": {
+		"default_icon": "images/sf-navigator16.png",
+		"default_popup": "popup.html"
+	},
 	"background": {
 		"scripts": [
 			"scripts/includes.js",

@@ -105,7 +105,7 @@ var sfnav = (()=>{
 					clearOutput()
 					commands["Go To Created Task"] = {url: "/"+ reply.id }
 					document.getElementById("sfnav_quickSearch").value = ""
-					addWord('Go To Created Task')
+					addElements('Go To Created Task')
 					addWord('(press escape to exit or enter a new command)')
 				} else {
 					console.log(response)
@@ -140,7 +140,7 @@ var sfnav = (()=>{
 		for(let i = 0; i < records.length; ++i) {
 			let cmd = 'Login As ' + records[i].Name
 			commands[cmd] = {key: cmd, id: records[i].Id}
-			addWord(cmd)
+			addElements(cmd)
 		}
 	}
 	function loginAsPerform(userId, newTab) {
@@ -213,11 +213,11 @@ var sfnav = (()=>{
 		let searchBox = document.getElementById("sfnav_searchBox")
 		if(visibility == "hidden") {
 			searchBox.style.opacity = 0
-			searchBox.style.zIndex = -1
+			searchBox.style.visibility = "hidden"
 		}
 		else {
 			searchBox.style.opacity = 0.98
-			searchBox.style.zIndex = 9999
+			searchBox.style.visibility = "visible"
 			document.getElementById("sfnav_quickSearch").focus()
 		}
 	}
@@ -251,9 +251,10 @@ var sfnav = (()=>{
 		let foundInDict = []
 		let inputRegex = ""
 		eval("inputRegex = /(?=.*" + input.toLowerCase().replace(/\s+/g, ")[^^](?=.*") + ")/")
-		let sortedKeys = Object.keys(dict).sort()
-		for (let i in sortedKeys) {
-			let key = sortedKeys[i]
+		let commandKeys = Object.keys(dict)
+		// let commandKeys = Object.keys(dict).sort() // might do sorting
+		for (let i in commandKeys) {
+			let key = commandKeys[i]
 			if(foundInDict.length > 10) break // stop at 10 since we can't see longer than that anyways - should make this a setting
 			if(key.toLowerCase().indexOf(input.toLowerCase()) != -1)
 				foundInDict.push({num: 10, key: key})

@@ -13,9 +13,11 @@ log("show element")
 				break
 			case "searchBox":
 				chrome.tabs.executeScript(tabs[0].id, {code: `
-					document.getElementById("sfnav_searchBox").style.zIndex = 9999
+					document.getElementById("sfnav_searchBox").style.visibility = "visible"
 					document.getElementById("sfnav_searchBox").style.opacity = 0.98
-					document.getElementById("sfnav_quickSearch").focus()
+					setTimeout(()=>{
+						document.getElementById("sfnav_quickSearch").focus()
+					}, 30)
 				`})
 				break
 		}
@@ -164,8 +166,6 @@ log("parse custom")
 	sendTabMessage({action: 'updateSessionCommands', key: sessionHash, commands: commands[sessionHash] })
 }
 
-chrome.browserAction.setPopup({ popup: "popup.html" })
-chrome.browserAction.onClicked.addListener(()=>{  log("click listener"); chrome.browserAction.setPopup({ popup: "popup.html" }) })
 chrome.commands.onCommand.addListener((command)=>{
 	switch(command) {
 		case 'showSearchBox': showElement("searchBox"); break

@@ -16,7 +16,7 @@ var getHTTP = function(targetUrl, type = "json", headers = {}, data = {}, method
 			return data
 	})
 }
-const debug = false
+const debug = true
 var log = (msg)=> {if(debug) console.log(msg)}
 
 const regMatchOrgId = /sid=([\w\d]+)/
