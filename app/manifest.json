@@ -1,16 +1,16 @@
 {
 	"name": "Salesforce Navigator for Lightning",
-	"version": "2.6.2",
+	"version": "2.6.3",
 	"manifest_version": 2,
 	"default_locale": "en",
-	"browser_action": { "default_icon": "images/sf-navigator32.png" },
+	"page_action": { "default_icon": "images/sf-navigator32.png" },
 	"background": {
 		"scripts": [
 			"scripts/includes.js",
 			"scripts/pluralize.js",
 			"scripts/background.js"
 		],
-		"persistent": false
+		"persistent": true
 	},
 	"icons": {
 		"16": "images/sf-navigator16.png",
