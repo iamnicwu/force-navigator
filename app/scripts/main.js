@@ -262,8 +262,9 @@ var sfnav = (()=>{
 	}
 
 // interface
-	function showLoadingIndicator() { document.getElementById('sfnav_loader').style.visibility = 'visible' }
-	function hideLoadingIndicator() { document.getElementById('sfnav_loader').style.visibility = 'hidden' }
+	function showLoadingIndicator() { document.getElementById('sfnav_loader').style.visibility = 'visible'}
+	function hideLoadingIndicator() { document.getElementById('sfnav_loader').style.visibility = 'hidden'}
+	
 	var hideSearchBox = function() {
 		let searchBar = document.getElementById('sfnav_quickSearch')
 		searchBar.blur()
