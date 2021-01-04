@@ -1,12 +1,12 @@
 {
-	"name": "Salesforce Navigator for Lightning",
-	"version": "2.7.2",
+	"name": "SF Nav",
+	"version": "2.7.5",
 	"manifest_version": 2,
 	"default_locale": "en",
 	"page_action": {
 		"default_icon": "images/sf-navigator32.png",
 		"default_popup": "popup.html",
-		"default_title": "Salesforce Navigator for Lightning"
+		"default_title": "SF Nav"
 	},
 	"background": {
 		"scripts": [
@@ -26,7 +26,7 @@
 		"images/ajax-loader.gif",
 		"images/sf-navigator128.png"
 	],
-	"description": "Get more done in Salesforce - list and search records, make new ones, create a task or login as on the fly!",
+	"description": "Make the lightning work more easily",
 	"content_scripts": [{
 		"css": [ "styles/main.css" ],
 		"matches": [
@@ -60,7 +60,7 @@
 		"showSearchBox": {
 			"description": "Open Search Box",
 			"suggested_key": {
-				"default": "Ctrl+Shift+Space"
+				"default": "Alt+2"
 			}
 		},
 		"showAppMenu": {

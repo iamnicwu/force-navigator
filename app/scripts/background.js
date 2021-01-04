@@ -174,3 +174,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse)=>{
 	}
 	return true
 })
+
+// Background script
+chrome.runtime.onUpdateAvailable.addListener(function(details) {
+	// Do your work, call the callback when done
+	syncRemainingData(function() {
+	  chrome.runtime.reload();
+	});
+  });
